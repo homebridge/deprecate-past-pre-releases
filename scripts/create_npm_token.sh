@@ -15,15 +15,15 @@ set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────
 NPM_ORG="homebridge"
-SECRET_NAME="NPM_TOKEN"
+SECRET_NAME="NPM_TEST_TOKEN"
 TOKEN_NAME="Homebridge CI Token"
-EXPIRES=90
+EXPIRES=1
 VISIBILITY="all"
 
 PACKAGES=(
   homebridge
   homebridge-config-ui-x
-  homebridge-plugin-ui-utils
+  @homebridge/hap-client
 )
 # ──────────────────────────────────────────────────────────
 
