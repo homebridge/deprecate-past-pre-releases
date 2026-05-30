@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Run bats unit tests for both shell scripts
+  # -----------------------------------------------------------------------
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install bats
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bats
+
+      - name: Run bats tests
+        run: bats tests/
+
+  # -----------------------------------------------------------------------
+  # Exercise the composite action itself in dry-run mode against this repo
+  # -----------------------------------------------------------------------
+  dry-run:
+    name: Action Dry-Run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create a dummy package.json
+        run: echo '{"name":"homebridge-deprecate-past-pre-releases","version":"1.0.0"}' > package.json
+
+      - name: Run action in dry-run mode
+        uses: ./
+        with:
+          execute: 'false'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
