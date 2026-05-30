@@ -55,6 +55,20 @@ Then add the following secret to your repository (**Settings → Secrets and var
 
 > **Tip:** Run the workflow without ticking the *Execute* checkbox first to preview exactly which npm versions would be deprecated and which GitHub releases/tags would be deleted — no changes are made in dry-run mode.
 
+### Creating the npm token (Homebridge org)
+
+For the Homebridge organisation, use `scripts/create_npm_token.sh` to create (or rotate) the npm token and push it directly to the GitHub org secret store:
+
+```bash
+# Prerequisites: npm CLI authenticated, gh CLI authenticated with org:secrets write
+bash scripts/create_npm_token.sh
+```
+
+The script:
+1. Revokes any existing npm token named `Homebridge CI Token` to avoid stale credentials.
+2. Creates a new granular npm access token scoped to `read-write` on the packages `homebridge`, `homebridge-config-ui-x`, and `homebridge-plugin-ui-utils`, valid for 90 days.
+3. Upserts the token as the `NPM_TOKEN` secret on the `homebridge` GitHub org (visible to all org repositories).
+
 ---
 
 ## Inputs
