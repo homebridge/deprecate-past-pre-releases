@@ -1,0 +1,70 @@
+name: 'Deprecate Past Pre-Releases'
+description: 'Deprecates old npm pre-release versions and cleans up GitHub pre-release releases and tags'
+author: 'homebridge'
+
+branding:
+  icon: 'trash-2'
+  color: 'red'
+
+inputs:
+  execute:
+    description: >
+      Set to "true" to execute the deprecation and cleanup actions.
+      Defaults to "false" (dry-run mode), which prints what would happen without making any changes.
+    required: false
+    default: 'false'
+  npm-token:
+    description: >
+      NPM authentication token used to deprecate npm packages.
+      Required when execute is "true".
+    required: false
+    default: ''
+  github-token:
+    description: >
+      GitHub token used to delete pre-release GitHub releases and Git tags.
+      Defaults to the built-in GITHUB_TOKEN when not provided.
+    required: false
+    default: ''
+  node-version:
+    description: 'Node.js version to use when running npm commands.'
+    required: false
+    default: 'lts/*'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Update npm to latest version
+      shell: bash
+      run: npm install -g npm@latest
+
+    - name: Configure npm authentication
+      shell: bash
+      run: |
+        if [ "$EXECUTE" = "true" ] || [ "$EXECUTE" = "1" ]; then
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "Error: npm-token input is required when execute is true." >&2
+            exit 1
+          fi
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+        fi
+      env:
+        EXECUTE: ${{ inputs.execute }}
+        NPM_TOKEN: ${{ inputs.npm-token }}
+
+    - name: Deprecate previous pre-release npm versions
+      shell: bash
+      run: bash "${{ github.action_path }}/scripts/deprecate_npm_prereleases.sh"
+      env:
+        EXECUTE: ${{ inputs.execute }}
+
+    - name: Delete previous pre-release GitHub releases and Git tags
+      shell: bash
+      run: bash "${{ github.action_path }}/scripts/github_prerelease_cleanup.sh"
+      env:
+        EXECUTE: ${{ inputs.execute }}
+        GH_TOKEN: ${{ inputs.github-token || github.token }}
