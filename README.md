@@ -11,8 +11,7 @@ Both operations default to **dry-run mode**, which prints exactly what _would_ h
 
 ## Usage
 
-Add the following to any workflow in your repository.  
-The repository must already be checked out before calling this action (the action reads `package.json` from the working directory).
+Create the file `.github/workflows/deprecate-past-pre-releases.yml` in your repository with the following content:
 
 ```yaml
 name: Deprecate Past Pre-Releases
@@ -47,6 +46,14 @@ jobs:
           npm-token: ${{ secrets.NPM_DEPRECATION_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+Then add the following secret to your repository (**Settings → Secrets and variables → Actions**):
+
+| Secret | Description |
+|--------|-------------|
+| `NPM_DEPRECATION_TOKEN` | An npm access token with `read-write` permission on the package, used to mark old pre-release versions as deprecated. Only required when running in execute mode. |
+
+> **Tip:** Run the workflow without ticking the *Execute* checkbox first to preview exactly which npm versions would be deprecated and which GitHub releases/tags would be deleted — no changes are made in dry-run mode.
 
 ---
 
