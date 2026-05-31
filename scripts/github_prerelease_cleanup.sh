@@ -54,8 +54,9 @@ summary() {
 
 echo ""
 echo "Finding pre-release GitHub releases..."
-# Collect all pre-release tags, sort by semver descending, skip the 5 most recent
-ALL_RELEASE_TAGS=$(gh release list --limit 100 --json tagName --jq '.[] | select(.tagName | test("-"; "i")) | .tagName' | sort -V -r)
+# Strip v prefix before sorting to match npm script behavior, then restore
+ALL_RELEASE_TAGS=$(gh release list --limit 100 --json tagName --jq '.[] | select(.tagName | test("-alpha\\.|-beta\\."; "i")) | .tagName' \
+  | sed 's/^v//' | sort -V -r | sed 's/^/v/')
 RELEASE_COUNT=$(echo "$ALL_RELEASE_TAGS" | grep -c . || true)
 echo "Found $RELEASE_COUNT pre-release GitHub releases (keeping 5 most recent):"
 RELEASE_TAGS_TO_DELETE=$(echo "$ALL_RELEASE_TAGS" | tail -n +6)
@@ -75,8 +76,9 @@ done <<< "$RELEASE_TAGS_TO_DELETE"
 echo ""
 echo "Finding pre-release Git tags..."
 git fetch --tags
-# Collect all pre-release tags, sort by semver descending, skip the 5 most recent
-ALL_GIT_TAGS=$(git tag -l "*-*" | sort -V -r)
+# Strip v prefix before sorting to match npm script behavior, then restore
+ALL_GIT_TAGS=$(git tag -l | grep -E '\-(alpha|beta)\.' \
+  | sed 's/^v//' | sort -V -r | sed 's/^/v/')
 TAG_COUNT=$(echo "$ALL_GIT_TAGS" | grep -c . || true)
 echo "Found $TAG_COUNT pre-release Git tags (keeping 5 most recent):"
 GIT_TAGS_TO_DELETE=$(echo "$ALL_GIT_TAGS" | tail -n +6)
