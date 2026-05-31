@@ -17,7 +17,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install bats
         run: |
@@ -37,7 +37,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create a dummy package.json
         run: echo '{"name":"homebridge-deprecate-past-pre-releases","version":"1.0.0"}' > package.json
