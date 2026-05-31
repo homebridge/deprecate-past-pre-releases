@@ -54,42 +54,44 @@ summary() {
 
 echo ""
 echo "Finding pre-release GitHub releases..."
+# Collect all pre-release tags, sort by semver descending, skip the 5 most recent
+ALL_RELEASE_TAGS=$(gh release list --limit 100 --json tagName --jq '.[] | select(.tagName | test("-"; "i")) | .tagName' | sort -V -r)
+RELEASE_COUNT=$(echo "$ALL_RELEASE_TAGS" | grep -c . || true)
+echo "Found $RELEASE_COUNT pre-release GitHub releases (keeping 5 most recent):"
+RELEASE_TAGS_TO_DELETE=$(echo "$ALL_RELEASE_TAGS" | tail -n +6)
+
 while read -r TAG; do
-  BASE_VERSION="${TAG%%-*}"
-  BASE_VERSION_NO_V="${BASE_VERSION#v}"
-  if [ "$(printf "%s\n%s" "$BASE_VERSION_NO_V" "$LATEST_VERSION" | sort -V | tail -n1)" == "$LATEST_VERSION" ]; then
-    if [ "$EXECUTE" = "0" ]; then
-      echo "* [DRY RUN] Would run: gh release delete \"$TAG\" --yes"
-      DELETED_RELEASES+=("$TAG")
-    else
-      echo "* Deleting GitHub release: $TAG"
-      gh release delete "$TAG" --yes
-      DELETED_RELEASES+=("$TAG")
-    fi
+  [ -z "$TAG" ] && continue
+  if [ "$EXECUTE" = "0" ]; then
+    echo "* [DRY RUN] Would run: gh release delete \"$TAG\" --yes"
+    DELETED_RELEASES+=("$TAG")
   else
-    echo "* Skipping release: $TAG (base version $BASE_VERSION_NO_V is newer than $LATEST_VERSION)"
+    echo "* Deleting GitHub release: $TAG"
+    gh release delete "$TAG" --yes
+    DELETED_RELEASES+=("$TAG")
   fi
-done < <(gh release list --limit 100 --json tagName --jq '.[] | select(.tagName | test("-"; "i")) | .tagName')
+done <<< "$RELEASE_TAGS_TO_DELETE"
 
 echo ""
 echo "Finding pre-release Git tags..."
 git fetch --tags
+# Collect all pre-release tags, sort by semver descending, skip the 5 most recent
+ALL_GIT_TAGS=$(git tag -l "*-*" | sort -V -r)
+TAG_COUNT=$(echo "$ALL_GIT_TAGS" | grep -c . || true)
+echo "Found $TAG_COUNT pre-release Git tags (keeping 5 most recent):"
+GIT_TAGS_TO_DELETE=$(echo "$ALL_GIT_TAGS" | tail -n +6)
+
 while read -r TAG; do
-  BASE_VERSION="${TAG%%-*}"
-  BASE_VERSION_NO_V="${BASE_VERSION#v}"
-  if [ "$(printf "%s\n%s" "$BASE_VERSION_NO_V" "$LATEST_VERSION" | sort -V | tail -n1)" == "$LATEST_VERSION" ]; then
-    if [ "$EXECUTE" = "0" ]; then
-      echo "* [DRY RUN] Would run: git push origin --delete refs/tags/$TAG"
-      DELETED_TAGS+=("$TAG")
-    else
-      echo "* Deleting tag: $TAG"
-      git push origin --delete "refs/tags/$TAG"
-      DELETED_TAGS+=("$TAG")
-    fi
+  [ -z "$TAG" ] && continue
+  if [ "$EXECUTE" = "0" ]; then
+    echo "* [DRY RUN] Would run: git push origin --delete refs/tags/$TAG"
+    DELETED_TAGS+=("$TAG")
   else
-    echo "* Skipping tag: $TAG (base version $BASE_VERSION_NO_V is newer than $LATEST_VERSION)"
+    echo "* Deleting tag: $TAG"
+    git push origin --delete "refs/tags/$TAG"
+    DELETED_TAGS+=("$TAG")
   fi
-done < <(git tag -l "*-*")
+done <<< "$GIT_TAGS_TO_DELETE"
 
 summary ""
 summary "## GitHub Pre-release Cleanup Summary"
