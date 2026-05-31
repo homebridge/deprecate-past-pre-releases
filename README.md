@@ -115,6 +115,22 @@ bash scripts/github_prerelease_cleanup.sh --execute
 EXECUTE=1 bash scripts/deprecate_npm_prereleases.sh
 ```
 
+> **Tip: Local testing against another repository**  
+> The scripts can be tested in dry-run mode against any repository that has a `package.json`. Simply change into the target repository directory and run the scripts using a relative path:
+>
+> ```bash
+> # Change to the target repository
+> cd ../homebridge
+>
+> # Test npm pre-release deprecation (dry run)
+> ../Deprecate-Past-Pre-Releases/scripts/deprecate_npm_prereleases.sh
+>
+> # Test GitHub release and tag cleanup (dry run)
+> ../Deprecate-Past-Pre-Releases/scripts/github_prerelease_cleanup.sh
+> ```
+>
+> No changes will be made — both scripts default to dry-run mode and will print exactly what _would_ happen.
+
 ---
 
 ## Development
