@@ -180,8 +180,10 @@ MOCK
   [[ "$output" == *"Error"* ]]
 }
 
-@test "dry run skips release whose base version is newer than latest" {
-  write_package_json "1.0.0"  # latest = 1.0.0, pre-releases are v1.0.0-alpha.1 etc.
+@test "dry run keeps a single pre-release regardless of the package version" {
+  # Selection is by recency, not by comparison against the package version, so
+  # a lone pre-release is kept even though its base version is newer
+  write_package_json "1.0.0"
   # Override gh mock to return a tag that is newer
   cat > "$MOCK_BIN_DIR/gh" <<'MOCK'
 #!/usr/bin/env bash
@@ -206,7 +208,7 @@ MOCK
   chmod +x "$MOCK_BIN_DIR/git"
   run bash "$SCRIPTS_DIR/github_prerelease_cleanup.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Skipping"* ]]
+  [[ "$output" == *"No GitHub releases were deleted"* ]]
   # Must NOT appear as a candidate to delete
   [[ "$output" != *"Would run: gh release delete"* ]]
 }
