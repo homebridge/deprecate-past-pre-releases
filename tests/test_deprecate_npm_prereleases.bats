@@ -159,6 +159,64 @@ write_package_json() {
   [[ "$output" == *"No versions were deprecated"* ]]
 }
 
+# ---------------------------------------------------------------------------
+# keep option tests
+# ---------------------------------------------------------------------------
+
+@test "keep 0 deprecates every pre-release version" {
+  write_package_json
+  write_curl_mock "$FOUR_ALPHA_VERSIONS"
+  run bash "$SCRIPTS_DIR/deprecate_npm_prereleases.sh" --keep 0
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"keeping 0 most recent"* ]]
+  [[ "$output" == *"1.0.0-alpha.1"* ]]
+  [[ "$output" == *"1.0.0-alpha.4"* ]]
+}
+
+@test "KEEP env var of 0 deprecates every pre-release version" {
+  write_package_json
+  write_curl_mock "$FOUR_ALPHA_VERSIONS"
+  KEEP=0 run bash "$SCRIPTS_DIR/deprecate_npm_prereleases.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"1.0.0-alpha.1"* ]]
+  [[ "$output" == *"1.0.0-alpha.4"* ]]
+}
+
+@test "keep 2 retains the 2 most recent and deprecates the rest" {
+  write_package_json
+  write_curl_mock "$FOUR_ALPHA_VERSIONS"
+  run bash "$SCRIPTS_DIR/deprecate_npm_prereleases.sh" --keep 2
+  [ "$status" -eq 0 ]
+  # alpha.4 and alpha.3 are kept; alpha.2 and alpha.1 are deprecated
+  [[ "$output" == *'Would run: npm deprecate test-package@"1.0.0-alpha.1"'* ]]
+  [[ "$output" == *'Would run: npm deprecate test-package@"1.0.0-alpha.2"'* ]]
+  [[ "$output" != *'Would run: npm deprecate test-package@"1.0.0-alpha.3"'* ]]
+  [[ "$output" != *'Would run: npm deprecate test-package@"1.0.0-alpha.4"'* ]]
+}
+
+@test "keep defaults to 5 when not supplied" {
+  write_package_json
+  write_curl_mock "$SIX_ALPHA_VERSIONS"
+  run bash "$SCRIPTS_DIR/deprecate_npm_prereleases.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"keeping 5 most recent"* ]]
+}
+
+@test "exits with error for a non-numeric keep value" {
+  write_package_json
+  write_curl_mock "$FOUR_ALPHA_VERSIONS"
+  run bash "$SCRIPTS_DIR/deprecate_npm_prereleases.sh" --keep abc
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Error"* ]]
+}
+
+@test "exits with error for a negative keep value" {
+  write_package_json
+  write_curl_mock "$FOUR_ALPHA_VERSIONS"
+  run bash "$SCRIPTS_DIR/deprecate_npm_prereleases.sh" --keep -1
+  [ "$status" -ne 0 ]
+}
+
 @test "dry run skips already-deprecated versions from registry" {
   write_package_json
   write_curl_mock "$MIXED_VERSIONS"

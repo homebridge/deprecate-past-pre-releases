@@ -139,12 +139,45 @@ MOCK
   [ "$status" -eq 0 ]
 }
 
-@test "dry run lists pre-release releases older than latest version" {
+@test "dry run keeps every pre-release when fewer than the keep count exist" {
+  # The two mocked pre-releases are within the default keep of 5, so neither
+  # is a deletion candidate
   write_package_json "2.0.0"
   run bash "$SCRIPTS_DIR/github_prerelease_cleanup.sh"
   [ "$status" -eq 0 ]
+  [[ "$output" == *"No GitHub releases were deleted"* ]]
+}
+
+@test "keep 0 lists every pre-release release and tag" {
+  write_package_json "2.0.0"
+  run bash "$SCRIPTS_DIR/github_prerelease_cleanup.sh" --keep 0
+  [ "$status" -eq 0 ]
   [[ "$output" == *"v1.0.0-alpha.1"* ]]
   [[ "$output" == *"v1.0.0-beta.1"* ]]
+}
+
+@test "KEEP env var of 0 lists every pre-release release and tag" {
+  write_package_json "2.0.0"
+  KEEP=0 run bash "$SCRIPTS_DIR/github_prerelease_cleanup.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"v1.0.0-alpha.1"* ]]
+  [[ "$output" == *"v1.0.0-beta.1"* ]]
+}
+
+@test "keep 1 retains only the most recent pre-release" {
+  write_package_json "2.0.0"
+  run bash "$SCRIPTS_DIR/github_prerelease_cleanup.sh" --keep 1
+  [ "$status" -eq 0 ]
+  # v1.0.0-beta.1 sorts above v1.0.0-alpha.1, so alpha.1 is the one dropped
+  [[ "$output" == *"v1.0.0-alpha.1"* ]]
+  [[ "$output" != *"Would run: gh release delete \"v1.0.0-beta.1\""* ]]
+}
+
+@test "exits with error for a non-numeric keep value" {
+  write_package_json "2.0.0"
+  run bash "$SCRIPTS_DIR/github_prerelease_cleanup.sh" --keep abc
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Error"* ]]
 }
 
 @test "dry run skips release whose base version is newer than latest" {

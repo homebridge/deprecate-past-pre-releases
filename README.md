@@ -2,8 +2,8 @@
 
 A reusable GitHub Action that:
 
-1. **Deprecates old npm pre-release versions** – keeps the 5 most recent alpha/beta versions on npm and deprecates everything older.
-2. **Cleans up GitHub pre-release releases and Git tags** – deletes GitHub releases and associated Git tags for pre-release versions that are older than the current stable release recorded in `package.json`.
+1. **Deprecates old npm pre-release versions** – keeps the most recent alpha/beta versions on npm (5 by default, configurable with `keep`) and deprecates everything older.
+2. **Cleans up GitHub pre-release releases and Git tags** – deletes the GitHub releases and associated Git tags for those same older pre-release versions.
 
 Both operations default to **dry-run mode**, which prints exactly what _would_ happen without making any actual changes.
 
@@ -78,6 +78,7 @@ The script:
 | `execute` | No | `false` | Set to `true` to execute deprecation and cleanup. Defaults to dry-run mode. |
 | `npm-token` | No* | — | NPM authentication token used to deprecate packages. *Required when `execute` is `true`. |
 | `github-token` | No | Built-in `GITHUB_TOKEN` | GitHub token used to delete pre-release GitHub releases and Git tags. |
+| `keep` | No | `5` | How many of the most recent pre-releases to keep. Everything older is deprecated and removed. Set to `0` to keep none. |
 | `node-version` | No | `lts/*` | Node.js version to use when running npm commands. |
 
 ---
@@ -88,7 +89,7 @@ The script:
 
 - Reads the package name and current stable version from `package.json`.
 - Fetches all non-deprecated `alpha` and `beta` versions from the npm registry.
-- Sorts versions in descending semver order and keeps the **5 most recent** as active.
+- Sorts versions in descending semver order and keeps the most recent as active (**5** by default, set `keep` to change it; `0` keeps none).
 - All older pre-release versions are deprecated with the message:  
   _"This pre-release version is deprecated in favor of the latest release."_
 - Handles npm `429` rate-limit responses gracefully.

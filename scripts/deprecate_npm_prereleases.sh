@@ -5,6 +5,11 @@ set -uo pipefail
 # Defaults to dry run unless --execute flag or EXECUTE=1 env var is set
 EXECUTE=${EXECUTE:-0}
 
+# How many of the most recent pre-releases to keep. 0 keeps none, so every
+# pre-release is deprecated - useful for packages that release pre-releases
+# rarely enough that they never accumulate past the default.
+KEEP=${KEEP:-5}
+
 # Normalize EXECUTE: accept "true"/"false" as well as "1"/"0"
 if [ "${EXECUTE}" = "true" ] || [ "${EXECUTE}" = "1" ]; then
   EXECUTE=1
@@ -18,14 +23,24 @@ while [ $# -gt 0 ]; do
     --execute)
       EXECUTE=1
       ;;
+    --keep)
+      shift
+      KEEP=${1:-}
+      ;;
     *)
       echo "Unknown option: $1" >&2
-      echo "Usage: $0 [--execute]  (or set EXECUTE=1 to enable execution)" >&2
+      echo "Usage: $0 [--execute] [--keep N]  (or set EXECUTE=1 / KEEP=N)" >&2
       exit 1
       ;;
   esac
   shift
 done
+
+# Validate KEEP: must be a non-negative integer
+if ! echo "$KEEP" | grep -qE '^[0-9]+$'; then
+  echo "Error: keep must be a non-negative integer, got: '$KEEP'" >&2
+  exit 1
+fi
 
 HAS_ERROR=0
 # Read package name and version from package.json
@@ -53,9 +68,9 @@ PRE_RELEASE_VERSIONS=$(curl -s --compressed -H "accept: application/vnd.npm.inst
   | jq -r '[.versions[] | select(.deprecated == null and (.version | test("-alpha\\.|-beta\\."))) | .version] | .[]' \
   | sort -V -r)
 PRE_RELEASE_COUNT=$(echo "$PRE_RELEASE_VERSIONS" | grep -c .)
-echo "Found $PRE_RELEASE_COUNT pre-release versions (keeping 5 most recent):"
-# Skip the 5 most recent pre-release versions, deprecate the rest
-PRE_RELEASE_VERSIONS=$(echo "$PRE_RELEASE_VERSIONS" | tail -n +6)
+echo "Found $PRE_RELEASE_COUNT pre-release versions (keeping $KEEP most recent):"
+# Skip the most recent pre-release versions, deprecate the rest
+PRE_RELEASE_VERSIONS=$(echo "$PRE_RELEASE_VERSIONS" | tail -n +$((KEEP + 1)))
 for VERSION in $PRE_RELEASE_VERSIONS; do
   echo "* Processing version: $VERSION..."
   if [ "$EXECUTE" = "0" ]; then

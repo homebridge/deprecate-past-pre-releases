@@ -6,6 +6,11 @@ set -uo pipefail
 # Defaults to dry run unless --execute flag or EXECUTE=1 env var is set
 EXECUTE=${EXECUTE:-0}
 
+# How many of the most recent pre-releases to keep. 0 keeps none, so every
+# pre-release release and tag is removed - useful for repositories that cut
+# pre-releases rarely enough that they never accumulate past the default.
+KEEP=${KEEP:-5}
+
 # Normalize EXECUTE: accept "true"/"false" as well as "1"/"0"
 if [ "${EXECUTE}" = "true" ] || [ "${EXECUTE}" = "1" ]; then
   EXECUTE=1
@@ -19,14 +24,24 @@ while [ $# -gt 0 ]; do
     --execute)
       EXECUTE=1
       ;;
+    --keep)
+      shift
+      KEEP=${1:-}
+      ;;
     *)
       echo "Unknown option: $1" >&2
-      echo "Usage: $0 [--execute]  (or set EXECUTE=1 to enable execution)" >&2
+      echo "Usage: $0 [--execute] [--keep N]  (or set EXECUTE=1 / KEEP=N)" >&2
       exit 1
       ;;
   esac
   shift
 done
+
+# Validate KEEP: must be a non-negative integer
+if ! echo "$KEEP" | grep -qE '^[0-9]+$'; then
+  echo "Error: keep must be a non-negative integer, got: '$KEEP'" >&2
+  exit 1
+fi
 
 # Read package version from package.json
 LATEST_VERSION=$(jq -r .version package.json)
@@ -58,8 +73,8 @@ echo "Finding pre-release GitHub releases..."
 ALL_RELEASE_TAGS=$(gh release list --limit 100 --json tagName --jq '.[] | select(.tagName | test("-alpha\\.|-beta\\."; "i")) | .tagName' \
   | sed 's/^v//' | sort -V -r | sed 's/^/v/')
 RELEASE_COUNT=$(echo "$ALL_RELEASE_TAGS" | grep -c . || true)
-echo "Found $RELEASE_COUNT pre-release GitHub releases (keeping 5 most recent):"
-RELEASE_TAGS_TO_DELETE=$(echo "$ALL_RELEASE_TAGS" | tail -n +6)
+echo "Found $RELEASE_COUNT pre-release GitHub releases (keeping $KEEP most recent):"
+RELEASE_TAGS_TO_DELETE=$(echo "$ALL_RELEASE_TAGS" | tail -n +$((KEEP + 1)))
 
 while read -r TAG; do
   [ -z "$TAG" ] && continue
@@ -80,8 +95,8 @@ git fetch --tags
 ALL_GIT_TAGS=$(git tag -l | grep -E '\-(alpha|beta)\.' \
   | sed 's/^v//' | sort -V -r | sed 's/^/v/')
 TAG_COUNT=$(echo "$ALL_GIT_TAGS" | grep -c . || true)
-echo "Found $TAG_COUNT pre-release Git tags (keeping 5 most recent):"
-GIT_TAGS_TO_DELETE=$(echo "$ALL_GIT_TAGS" | tail -n +6)
+echo "Found $TAG_COUNT pre-release Git tags (keeping $KEEP most recent):"
+GIT_TAGS_TO_DELETE=$(echo "$ALL_GIT_TAGS" | tail -n +$((KEEP + 1)))
 
 while read -r TAG; do
   [ -z "$TAG" ] && continue
